@@ -1,39 +1,169 @@
-**Welcome to your Base44 project** 
+# 💅 NailedIt — Salon de Manucure
 
-**About**
+Site web et système de réservation en ligne pour un salon de manucure. Construit avec **React**, **Vite**, **TailwindCSS** et **shadcn/ui**.
 
-View and Edit  your app on [Base44.com](http://Base44.com) 
+---
 
-This project contains everything you need to run your app locally.
+## 📋 Fonctionnalités
 
-**Edit the code in your local development environment**
+- **Page d'accueil** — Présentation du salon, services, équipe et contact
+- **Catalogue des services** — Liste des prestations avec prix et durée
+- **Réservation en ligne** — Processus en 4 étapes (service → technicienne → date/heure → confirmation)
+- **Panneau d'administration** — Gestion des rendez-vous, services, techniciennes et paramètres
+- **Notifications** — Confirmations, rappels et remerciements par email (simulation côté client)
+- **PWA** — Application installable sur mobile
+- **Design responsive** — Interface adaptée mobile, tablette et desktop
 
-Any change pushed to the repo will also be reflected in the Base44 Builder.
+---
 
-**Prerequisites:** 
+## 🛠 Stack Technique
 
-1. Clone the repository using the project's Git URL 
-2. Navigate to the project directory
-3. Install dependencies: `npm install`
-4. Create an `.env.local` file and set the right environment variables
+| Technologie | Usage |
+|---|---|
+| **React 18** | Framework UI |
+| **Vite** | Build tool & dev server |
+| **TailwindCSS** | Styles utilitaires |
+| **shadcn/ui** (Radix UI) | Composants UI accessibles |
+| **React Router** | Navigation SPA |
+| **TanStack Query** | Cache et synchronisation des données |
+| **Framer Motion** | Animations |
+| **date-fns** | Manipulation des dates |
+| **Lucide React** | Icônes |
+| **Sonner** | Notifications toast |
+
+---
+
+## 📁 Structure du Projet
 
 ```
-VITE_BASE44_APP_ID=your_app_id
-VITE_BASE44_APP_BASE_URL=your_backend_url
-
-e.g.
-VITE_BASE44_APP_ID=cbef744a8545c389ef439ea6
-VITE_BASE44_APP_BASE_URL=https://my-to-do-list-81bfaad7.base44.app
+nailedit/
+├── public/                     # Assets statiques
+├── src/
+│   ├── api/
+│   │   └── client.js           # Client API principal (point d'entrée unique)
+│   ├── services/
+│   │   ├── storage.js          # Service de stockage local (CRUD générique)
+│   │   ├── entities.js         # Définition des entités (Service, Technician, etc.)
+│   │   ├── auth.js             # Service d'authentification
+│   │   └── notifications.js    # Service de notifications email (simulation)
+│   ├── lib/
+│   │   ├── AuthContext.jsx     # Contexte d'authentification React
+│   │   ├── app-params.js       # Paramètres de configuration
+│   │   ├── NavigationTracker.jsx # Suivi de navigation
+│   │   ├── PageNotFound.jsx    # Page 404
+│   │   ├── query-client.js     # Configuration TanStack Query
+│   │   └── utils.js            # Utilitaires (cn, etc.)
+│   ├── components/
+│   │   ├── ui/                 # Composants shadcn/ui (Button, Card, Dialog, etc.)
+│   │   ├── home/               # Sections de la page d'accueil
+│   │   ├── booking/            # Composants du processus de réservation
+│   │   ├── admin/              # Composants du panneau d'administration
+│   │   ├── PWAInstaller.jsx    # Installation PWA
+│   │   └── UserNotRegisteredError.jsx
+│   ├── pages/
+│   │   ├── Home.jsx            # Page d'accueil
+│   │   ├── Services.jsx        # Catalogue des services
+│   │   ├── Booking.jsx         # Page de réservation
+│   │   └── Admin.jsx           # Panneau d'administration
+│   ├── hooks/
+│   │   └── use-mobile.jsx      # Hook pour détecter le mobile
+│   ├── utils/
+│   │   └── index.ts            # Utilitaires de navigation (createPageUrl)
+│   ├── App.jsx                 # Composant racine
+│   ├── main.jsx                # Point d'entrée
+│   ├── Layout.jsx              # Layout global (header, footer, navigation)
+│   ├── pages.config.js         # Configuration du routage
+│   └── index.css               # Styles globaux + variables CSS
+├── package.json
+├── vite.config.js
+├── tailwind.config.js
+├── postcss.config.js
+└── components.json             # Config shadcn/ui
 ```
 
-Run the app: `npm run dev`
+---
 
-**Publish your changes**
+## 🚀 Installation & Démarrage
 
-Open [Base44.com](http://Base44.com) and click on Publish.
+### Prérequis
 
-**Docs & Support**
+- **Node.js** 18+ et **npm** 9+
 
-Documentation: [https://docs.base44.com/Integrations/Using-GitHub](https://docs.base44.com/Integrations/Using-GitHub)
+### Installation
 
-Support: [https://app.base44.com/support](https://app.base44.com/support)
+```bash
+# Cloner le dépôt
+git clone https://github.com/michless16/nailedit.git
+cd nailedit
+
+# Installer les dépendances
+npm install
+
+# Lancer le serveur de développement
+npm run dev
+```
+
+L'application sera accessible sur `http://localhost:5173`.
+
+### Variables d'Environnement (optionnel)
+
+Créez un fichier `.env.local` :
+
+```env
+VITE_APP_NAME=NailedIt
+VITE_API_BASE_URL=            # URL du backend API (vide = stockage local)
+```
+
+### Commandes
+
+| Commande | Description |
+|---|---|
+| `npm run dev` | Serveur de développement |
+| `npm run build` | Build de production |
+| `npm run preview` | Prévisualiser le build |
+| `npm run lint` | Vérifier le code |
+| `npm run lint:fix` | Corriger automatiquement le linting |
+
+---
+
+## 🏗 Architecture
+
+### Couche de données (services/)
+
+Les données sont stockées dans le **localStorage** via un service CRUD générique. Cette couche est conçue pour être facilement remplacée par un vrai backend :
+
+```javascript
+// Exemple d'utilisation
+import { apiClient } from '@/api/client';
+
+// Lire les services actifs
+const services = await apiClient.entities.Service.filter({ is_active: true }, 'order');
+
+// Créer un rendez-vous
+const rdv = await apiClient.entities.Appointment.create({
+  client_name: 'Marie',
+  service_name: 'Manucure Gel',
+  date: '2026-04-01',
+  time: '10:00',
+});
+```
+
+### Authentification
+
+L'authentification utilise le localStorage. Pour migrer vers un vrai backend :
+
+1. Remplacez `src/services/auth.js` par votre logique d'auth (Firebase, Supabase, JWT, etc.)
+2. L'interface reste la même : `login()`, `logout()`, `me()`, `isAuthenticated()`
+
+### Notifications
+
+Les notifications sont simulées en console. Pour activer les vrais emails :
+
+1. Créez un endpoint API backend (ex: Express + Nodemailer)
+2. Modifiez `src/services/notifications.js` pour appeler votre API au lieu de `console.info`
+
+---
+
+## 📄 Licence
+
+Projet privé — Tous droits réservés.
