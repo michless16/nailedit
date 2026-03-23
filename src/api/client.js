@@ -2,7 +2,7 @@
  * @module client
  * @description Client API principal de l'application NailedIt.
  * Centralise l'accès aux entités, à l'authentification et aux fonctions de notification.
- * Remplace entièrement le SDK @base44/sdk par des services locaux.
+ * Utilise Supabase comme backend.
  *
  * @example
  * import { apiClient } from '@/api/client';
@@ -41,7 +41,7 @@ export const apiClient = {
   },
 
   /**
-   * Service d'authentification.
+   * Service d'authentification Supabase.
    * @see module:auth
    */
   auth: authService,

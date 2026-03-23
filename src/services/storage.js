@@ -1,54 +1,51 @@
 /**
  * @module storage
- * @description Service de stockage local pour les entités de l'application.
- * Utilise le localStorage comme persistance côté client.
- * Cette couche peut être remplacée par un vrai backend (API REST, Firebase, Supabase, etc.)
- * sans modifier le reste de l'application.
+ * @description Service de stockage Supabase pour les entités de l'application.
+ * Utilise Supabase comme backend de persistance.
+ * Conserve la même interface API que l'ancien service localStorage
+ * pour ne pas casser les composants existants.
  */
 
-/**
- * Génère un identifiant unique.
- * @returns {string} Un identifiant unique basé sur un timestamp et une valeur aléatoire.
- */
-function generateId() {
-  return Date.now().toString(36) + Math.random().toString(36).substring(2, 9);
-}
+import { supabase } from '@/config/supabase';
 
 /**
- * Crée un service CRUD pour une entité donnée, avec persistance dans le localStorage.
+ * Crée un service CRUD pour une entité donnée, avec persistance dans Supabase.
  * @param {string} entityName - Le nom de l'entité (ex: 'Service', 'Appointment', 'Technician').
  * @returns {Object} Un objet contenant les méthodes CRUD : list, filter, create, update, delete.
  *
  * @example
  * const ServiceEntity = createEntityService('Service');
- * const allServices = await ServiceEntity.list();
+ * const allServices = await ServiceEntity.list('order');
  * const active = await ServiceEntity.filter({ is_active: true });
  * const newService = await ServiceEntity.create({ name: 'Manucure', price: 30 });
  * await ServiceEntity.update(newService.id, { price: 35 });
  * await ServiceEntity.delete(newService.id);
  */
 export function createEntityService(entityName) {
-  const storageKey = `nailedit_${entityName.toLowerCase()}`;
+  // Mapping nom d'entité -> nom de table Supabase
+  const tableMap = {
+    Service: 'services',
+    Technician: 'technicians',
+    Appointment: 'appointments',
+    ShopSettings: 'shop_settings',
+  };
 
-  /**
-   * Récupère toutes les entrées depuis le localStorage.
-   * @returns {Array<Object>} Les entrées stockées.
-   */
-  function getAll() {
-    try {
-      const data = localStorage.getItem(storageKey);
-      return data ? JSON.parse(data) : [];
-    } catch {
-      return [];
-    }
+  const tableName = tableMap[entityName];
+  if (!tableName) {
+    throw new Error(`Entité inconnue : ${entityName}. Tables disponibles : ${Object.keys(tableMap).join(', ')}`);
   }
 
   /**
-   * Sauvegarde toutes les entrées dans le localStorage.
-   * @param {Array<Object>} items - Les entrées à sauvegarder.
+   * Applique le tri à une requête Supabase.
+   * @param {Object} query - La requête Supabase en cours.
+   * @param {string} [sortField] - Champ de tri. Préfixer par '-' pour un tri descendant.
+   * @returns {Object} La requête avec le tri appliqué.
    */
-  function saveAll(items) {
-    localStorage.setItem(storageKey, JSON.stringify(items));
+  function applySort(query, sortField) {
+    if (!sortField) return query;
+    const desc = sortField.startsWith('-');
+    const field = desc ? sortField.slice(1) : sortField;
+    return query.order(field, { ascending: !desc });
   }
 
   return {
@@ -58,18 +55,14 @@ export function createEntityService(entityName) {
      * @returns {Promise<Array<Object>>} Les entrées triées.
      */
     async list(sortField) {
-      let items = getAll();
-      if (sortField) {
-        const desc = sortField.startsWith('-');
-        const field = desc ? sortField.slice(1) : sortField;
-        items.sort((a, b) => {
-          const valA = a[field] ?? '';
-          const valB = b[field] ?? '';
-          if (typeof valA === 'string') return desc ? valB.localeCompare(valA) : valA.localeCompare(valB);
-          return desc ? valB - valA : valA - valB;
-        });
+      let query = supabase.from(tableName).select('*');
+      query = applySort(query, sortField);
+      const { data, error } = await query;
+      if (error) {
+        console.error(`Erreur lors du listage de ${entityName}:`, error);
+        throw error;
       }
-      return items;
+      return data || [];
     },
 
     /**
@@ -79,20 +72,20 @@ export function createEntityService(entityName) {
      * @returns {Promise<Array<Object>>} Les entrées filtrées et triées.
      */
     async filter(criteria, sortField) {
-      let items = getAll().filter(item =>
-        Object.entries(criteria).every(([key, value]) => item[key] === value)
-      );
-      if (sortField) {
-        const desc = sortField.startsWith('-');
-        const field = desc ? sortField.slice(1) : sortField;
-        items.sort((a, b) => {
-          const valA = a[field] ?? '';
-          const valB = b[field] ?? '';
-          if (typeof valA === 'string') return desc ? valB.localeCompare(valA) : valA.localeCompare(valB);
-          return desc ? valB - valA : valA - valB;
-        });
+      let query = supabase.from(tableName).select('*');
+
+      // Appliquer chaque critère de filtrage
+      for (const [key, value] of Object.entries(criteria)) {
+        query = query.eq(key, value);
       }
-      return items;
+
+      query = applySort(query, sortField);
+      const { data, error } = await query;
+      if (error) {
+        console.error(`Erreur lors du filtrage de ${entityName}:`, error);
+        throw error;
+      }
+      return data || [];
     },
 
     /**
@@ -101,16 +94,16 @@ export function createEntityService(entityName) {
      * @returns {Promise<Object>} L'entrée créée avec un id et les timestamps.
      */
     async create(data) {
-      const items = getAll();
-      const newItem = {
-        ...data,
-        id: generateId(),
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      };
-      items.push(newItem);
-      saveAll(items);
-      return newItem;
+      const { data: created, error } = await supabase
+        .from(tableName)
+        .insert(data)
+        .select()
+        .single();
+      if (error) {
+        console.error(`Erreur lors de la création de ${entityName}:`, error);
+        throw error;
+      }
+      return created;
     },
 
     /**
@@ -121,12 +114,17 @@ export function createEntityService(entityName) {
      * @throws {Error} Si l'entrée n'est pas trouvée.
      */
     async update(id, data) {
-      const items = getAll();
-      const index = items.findIndex(item => item.id === id);
-      if (index === -1) throw new Error(`${entityName} non trouvé(e) avec l'id: ${id}`);
-      items[index] = { ...items[index], ...data, updated_at: new Date().toISOString() };
-      saveAll(items);
-      return items[index];
+      const { data: updated, error } = await supabase
+        .from(tableName)
+        .update(data)
+        .eq('id', id)
+        .select()
+        .single();
+      if (error) {
+        console.error(`Erreur lors de la mise à jour de ${entityName}:`, error);
+        throw error;
+      }
+      return updated;
     },
 
     /**
@@ -135,8 +133,14 @@ export function createEntityService(entityName) {
      * @returns {Promise<boolean>} true si la suppression a réussi.
      */
     async delete(id) {
-      const items = getAll().filter(item => item.id !== id);
-      saveAll(items);
+      const { error } = await supabase
+        .from(tableName)
+        .delete()
+        .eq('id', id);
+      if (error) {
+        console.error(`Erreur lors de la suppression de ${entityName}:`, error);
+        throw error;
+      }
       return true;
     },
   };
