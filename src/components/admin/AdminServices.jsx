@@ -38,6 +38,9 @@ export default function AdminServices() {
       queryClient.invalidateQueries(['services']);
       toast.success('Service créé avec succès');
       resetForm();
+    },
+    onError: (error) => {
+      toast.error('Erreur lors de la création du service : ' + (error.message || 'Erreur inconnue'));
     }
   });
 
@@ -48,6 +51,9 @@ export default function AdminServices() {
       queryClient.invalidateQueries(['services']);
       toast.success('Service mis à jour');
       resetForm();
+    },
+    onError: (error) => {
+      toast.error('Erreur lors de la mise à jour du service : ' + (error.message || 'Erreur inconnue'));
     }
   });
 
@@ -57,6 +63,9 @@ export default function AdminServices() {
       queryClient.invalidateQueries(['services-admin']);
       queryClient.invalidateQueries(['services']);
       toast.success('Service supprimé');
+    },
+    onError: (error) => {
+      toast.error('Erreur lors de la suppression du service : ' + (error.message || 'Erreur inconnue'));
     }
   });
 

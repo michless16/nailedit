@@ -18,7 +18,7 @@ import { supabase } from '@/config/supabase';
  * Liste des emails ayant accès administrateur automatique.
  * @constant {string[]}
  */
-const AUTO_ADMIN_EMAILS = ['trimena@hotmail.ca'];
+const AUTO_ADMIN_EMAILS = ['trimena@hotmail.ca', 'admin@nailedit-salon.com'];
 
 /**
  * Service d'authentification de l'application.
