@@ -77,6 +77,9 @@ export default function AdminSettings() {
       queryClient.invalidateQueries(['shopSettings-admin']);
       queryClient.invalidateQueries(['shopSettings']);
       toast.success('Paramètres sauvegardés');
+    },
+    onError: (error) => {
+      toast.error('Erreur lors de la sauvegarde des paramètres : ' + (error.message || 'Erreur inconnue'));
     }
   });
 

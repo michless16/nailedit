@@ -39,6 +39,9 @@ export default function AdminTechnicians() {
       queryClient.invalidateQueries(['technicians']);
       toast.success('Technicienne ajoutée avec succès');
       resetForm();
+    },
+    onError: (error) => {
+      toast.error('Erreur lors de l\'ajout de la technicienne : ' + (error.message || 'Erreur inconnue'));
     }
   });
 
@@ -49,6 +52,9 @@ export default function AdminTechnicians() {
       queryClient.invalidateQueries(['technicians']);
       toast.success('Technicienne mise à jour');
       resetForm();
+    },
+    onError: (error) => {
+      toast.error('Erreur lors de la mise à jour de la technicienne : ' + (error.message || 'Erreur inconnue'));
     }
   });
 
@@ -58,6 +64,9 @@ export default function AdminTechnicians() {
       queryClient.invalidateQueries(['technicians-admin']);
       queryClient.invalidateQueries(['technicians']);
       toast.success('Technicienne supprimée');
+    },
+    onError: (error) => {
+      toast.error('Erreur lors de la suppression de la technicienne : ' + (error.message || 'Erreur inconnue'));
     }
   });
 

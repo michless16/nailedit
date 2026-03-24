@@ -39,6 +39,9 @@ export default function AdminAppointments() {
     onSuccess: () => {
       queryClient.invalidateQueries(['appointments-admin']);
       toast.success('Rendez-vous mis à jour');
+    },
+    onError: (error) => {
+      toast.error('Erreur lors de la mise à jour du rendez-vous : ' + (error.message || 'Erreur inconnue'));
     }
   });
 

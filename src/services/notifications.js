@@ -1,12 +1,12 @@
 /**
  * @module notifications
  * @description Service de notifications par email pour l'application NailedIt.
- * Remplace les fonctions serverless Base44 (Deno) par un service côté client.
+ * Simule l'envoi de notifications et met à jour le statut dans Supabase.
  *
  * En production, ces fonctions devraient appeler un vrai backend pour envoyer
- * des emails (ex: via SendGrid, Mailgun, Nodemailer + Express, etc.).
+ * des emails (ex: via SendGrid, Mailgun, Supabase Edge Functions, etc.).
  * Pour l'instant, elles simulent l'envoi en loguant les détails dans la console
- * et mettent à jour le statut des notifications dans le localStorage.
+ * et mettent à jour le statut des notifications dans Supabase.
  */
 
 import { Appointment, ShopSettings } from './entities';
@@ -68,7 +68,7 @@ export async function sendBookingNotification({ appointment_id, notification_typ
     `\n   Date: ${appointment.date} à ${appointment.time}`
   );
 
-  // Mettre à jour le statut de la notification
+  // Mettre à jour le statut de la notification dans Supabase
   const updatedNotificationsSent = { ...notificationsSent, [updateField]: true };
   await Appointment.update(appointment_id, {
     notifications_sent: updatedNotificationsSent,

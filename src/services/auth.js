@@ -1,51 +1,24 @@
 /**
  * @module auth
- * @description Service d'authentification local pour l'application NailedIt.
- * Remplace le système d'authentification de la plateforme Base44 par une gestion
- * locale des utilisateurs via le localStorage.
+ * @description Service d'authentification Supabase pour l'application NailedIt.
+ * Utilise Supabase Auth pour la connexion par email/mot de passe.
  *
  * Fonctionnalités :
- * - Connexion / Déconnexion
+ * - Connexion / Déconnexion via Supabase Auth
  * - Vérification de l'état d'authentification
  * - Gestion des rôles (admin / user)
  * - Récupération de l'utilisateur courant
  *
- * Note : Ce service est conçu pour être facilement remplacé par un vrai backend
- * d'authentification (Firebase Auth, Supabase Auth, JWT custom, etc.).
+ * Conserve la même interface API que l'ancien service localStorage.
  */
 
-const AUTH_STORAGE_KEY = 'nailedit_auth_user';
+import { supabase } from '@/config/supabase';
 
 /**
  * Liste des emails ayant accès administrateur automatique.
  * @constant {string[]}
  */
-const AUTO_ADMIN_EMAILS = ['trimena@hotmail.ca'];
-
-/**
- * Récupère l'utilisateur actuellement connecté depuis le localStorage.
- * @returns {Object|null} L'objet utilisateur ou null si non connecté.
- */
-function getCurrentUser() {
-  try {
-    const data = localStorage.getItem(AUTH_STORAGE_KEY);
-    return data ? JSON.parse(data) : null;
-  } catch {
-    return null;
-  }
-}
-
-/**
- * Sauvegarde l'utilisateur dans le localStorage.
- * @param {Object|null} user - L'utilisateur à sauvegarder (null pour déconnecter).
- */
-function setCurrentUser(user) {
-  if (user) {
-    localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(user));
-  } else {
-    localStorage.removeItem(AUTH_STORAGE_KEY);
-  }
-}
+const AUTO_ADMIN_EMAILS = ['trimena@hotmail.ca', 'admin@nailedit-salon.com'];
 
 /**
  * Service d'authentification de l'application.
@@ -58,9 +31,22 @@ const authService = {
    * @throws {Error} Si aucun utilisateur n'est connecté.
    */
   async me() {
-    const user = getCurrentUser();
-    if (!user) throw { status: 401, message: 'Non authentifié' };
-    return user;
+    const { data: { session }, error } = await supabase.auth.getSession();
+
+    if (error || !session?.user) {
+      throw { status: 401, message: 'Non authentifié' };
+    }
+
+    const user = session.user;
+    const isAdmin = AUTO_ADMIN_EMAILS.includes(user.email?.toLowerCase());
+
+    return {
+      id: user.id,
+      email: user.email,
+      full_name: user.user_metadata?.full_name || user.email?.split('@')[0] || '',
+      role: isAdmin ? 'admin' : 'user',
+      created_at: user.created_at,
+    };
   },
 
   /**
@@ -68,38 +54,47 @@ const authService = {
    * @returns {Promise<boolean>} true si un utilisateur est connecté.
    */
   async isAuthenticated() {
-    return !!getCurrentUser();
+    const { data: { session } } = await supabase.auth.getSession();
+    return !!session;
   },
 
   /**
    * Connecte un utilisateur avec son email et mot de passe.
-   * Si l'email est dans la liste AUTO_ADMIN_EMAILS, l'utilisateur reçoit le rôle admin.
    * @param {string} email - L'adresse email de l'utilisateur.
-   * @param {string} password - Le mot de passe (validation minimale pour le prototype).
+   * @param {string} password - Le mot de passe.
    * @returns {Promise<Object>} L'utilisateur connecté.
-   * @throws {Error} Si l'email ou le mot de passe est manquant.
+   * @throws {Error} Si l'email ou le mot de passe est incorrect.
    */
   async login(email, password) {
     if (!email || !password) throw new Error('Email et mot de passe requis');
 
-    const isAdmin = AUTO_ADMIN_EMAILS.includes(email.toLowerCase());
-    const user = {
-      id: 'user_' + email.replace(/[^a-z0-9]/gi, '_'),
+    const { data, error } = await supabase.auth.signInWithPassword({
       email: email.toLowerCase(),
-      full_name: email.split('@')[0],
+      password,
+    });
+
+    if (error) {
+      throw new Error(error.message || 'Erreur de connexion');
+    }
+
+    const user = data.user;
+    const isAdmin = AUTO_ADMIN_EMAILS.includes(user.email?.toLowerCase());
+
+    return {
+      id: user.id,
+      email: user.email,
+      full_name: user.user_metadata?.full_name || user.email?.split('@')[0] || '',
       role: isAdmin ? 'admin' : 'user',
-      created_at: new Date().toISOString(),
+      created_at: user.created_at,
     };
-    setCurrentUser(user);
-    return user;
   },
 
   /**
    * Déconnecte l'utilisateur et redirige optionnellement.
    * @param {string} [redirectUrl] - URL de redirection après déconnexion.
    */
-  logout(redirectUrl) {
-    setCurrentUser(null);
+  async logout(redirectUrl) {
+    await supabase.auth.signOut();
     if (redirectUrl) {
       window.location.href = redirectUrl;
     }
@@ -122,15 +117,15 @@ const authService = {
    * @returns {Promise<{isAdmin: boolean}>} L'état admin de l'utilisateur.
    */
   async checkAdminAccess() {
-    const user = getCurrentUser();
-    if (!user) return { isAdmin: false };
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) return { isAdmin: false };
 
-    if (AUTO_ADMIN_EMAILS.includes(user.email) && user.role !== 'admin') {
-      user.role = 'admin';
-      setCurrentUser(user);
+      const isAdmin = AUTO_ADMIN_EMAILS.includes(session.user.email?.toLowerCase());
+      return { isAdmin };
+    } catch {
+      return { isAdmin: false };
     }
-
-    return { isAdmin: user.role === 'admin' };
   },
 };
 
