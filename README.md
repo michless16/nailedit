@@ -29,6 +29,7 @@ Site web et système de réservation en ligne pour un salon de manucure. Constru
 | **Framer Motion** | Animations |
 | **date-fns** | Manipulation des dates |
 | **Lucide React** | Icônes |
+| **Supabase** | Backend (BDD PostgreSQL, Auth, API) |
 | **Sonner** | Notifications toast |
 
 ---
@@ -88,31 +89,76 @@ nailedit/
 ### Prérequis
 
 - **Node.js** 18+ et **npm** 9+
+- Un projet **Supabase** (gratuit sur [supabase.com](https://supabase.com))
 
 ### Installation
 
 ```bash
-# Cloner le dépôt
+# 1. Cloner le dépôt
 git clone https://github.com/michless16/nailedit.git
 cd nailedit
 
-# Installer les dépendances
+# 2. Installer les dépendances
 npm install
 
-# Lancer le serveur de développement
+# 3. Configurer les variables d'environnement (voir section ci-dessous)
+cp .env.example .env.local
+
+# 4. Lancer le serveur de développement
 npm run dev
 ```
 
 L'application sera accessible sur `http://localhost:5173`.
 
-### Variables d'Environnement (optionnel)
+### ⚙️ Configuration des variables d'environnement
 
-Créez un fichier `.env.local` :
+L'application utilise **Supabase** comme backend. Les variables d'environnement sont **obligatoires** pour que l'application fonctionne.
+
+#### Étape 1 — Créer le fichier `.env.local`
+
+Copiez le fichier d'exemple :
+
+```bash
+cp .env.example .env.local
+```
+
+#### Étape 2 — Renseigner les valeurs Supabase
+
+Éditez `.env.local` avec vos credentials Supabase :
 
 ```env
+# Supabase Configuration
+VITE_SUPABASE_URL=https://votre-projet.supabase.co
+VITE_SUPABASE_ANON_KEY=votre_clé_anon_supabase
+
+# Application
 VITE_APP_NAME=NailedIt
-VITE_API_BASE_URL=            # URL du backend API (vide = stockage local)
 ```
+
+#### Où trouver vos credentials Supabase ?
+
+1. Connectez-vous à [app.supabase.com](https://app.supabase.com)
+2. Sélectionnez votre projet
+3. Allez dans **Settings** → **API**
+4. Copiez :
+   - **Project URL** → `VITE_SUPABASE_URL`
+   - **anon public key** → `VITE_SUPABASE_ANON_KEY`
+
+#### Étape 3 — Configurer la base de données
+
+Exécutez les scripts SQL dans l'éditeur SQL de Supabase :
+
+```bash
+# 1. Créer le schéma (tables, index, RLS policies)
+# → Copiez le contenu de supabase-schema.sql dans l'éditeur SQL Supabase
+
+# 2. Insérer les données de test
+# → Copiez le contenu de seed-data.sql dans l'éditeur SQL Supabase
+```
+
+> 📖 Consultez [DATABASE.md](./DATABASE.md) pour la documentation complète du schéma.
+
+> ⚠️ **Important** : Le fichier `.env.local` contient des informations sensibles et ne doit **jamais** être commité sur GitHub. Il est déjà inclus dans `.gitignore`.
 
 ### Commandes
 
@@ -130,7 +176,7 @@ VITE_API_BASE_URL=            # URL du backend API (vide = stockage local)
 
 ### Couche de données (services/)
 
-Les données sont stockées dans le **localStorage** via un service CRUD générique. Cette couche est conçue pour être facilement remplacée par un vrai backend :
+Les données sont stockées dans **Supabase** (PostgreSQL) via un service CRUD générique :
 
 ```javascript
 // Exemple d'utilisation
@@ -150,10 +196,7 @@ const rdv = await apiClient.entities.Appointment.create({
 
 ### Authentification
 
-L'authentification utilise le localStorage. Pour migrer vers un vrai backend :
-
-1. Remplacez `src/services/auth.js` par votre logique d'auth (Firebase, Supabase, JWT, etc.)
-2. L'interface reste la même : `login()`, `logout()`, `me()`, `isAuthenticated()`
+L'authentification utilise **Supabase Auth**. L'interface expose : `login()`, `logout()`, `me()`, `isAuthenticated()`.
 
 ### Notifications
 
